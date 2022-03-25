@@ -1,2 +1,2 @@
-# capstone_project
-capstone_project_google_analytics
+# Capstone_Project 
+Google Data Analytics Project
