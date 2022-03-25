@@ -1,0 +1,344 @@
+---
+title: "Google Data Analytics Project"
+author: "Leo Leung"
+date: 'March 2022'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+* [Introduction]
+
+
+
+## 1. Introduction: Google Data Analytics - Case Study
+* My title:
+  + **Junior Data Analyst**, _Marketing team_
+* Company:
+  + __Cyclistic__ (fictional), bike-sharing company in Chicago
+  + mocking a real-world bike-sharing system in Chicago, [Divvy](https://divvybikes.com/pricing), operated by [Lyft](https://www.lyft.com/bikes/chicago-il/meet-our-bikes)
+  + data source: [Divvy Public Data](https://ride.divvybikes.com/system-data)
+* What we do:
+  + __push-bike__ (main) __& e-bike__ (growing) __sharing / rentals__
+  + __6000 bikes__ across __600 docking stations__ in Chicago
+  + unlock & return bike at any station, __24x7x365__
+  + 3 price plans: __Single-ride: $3.30__ (30mins inc.)  / __24-hour unlimited: $15__ / __Annual unlimited: $108 (Members)__  
+  
+![](https://pbs.twimg.com/media/FFhvytfXwAI7QfK?format=jpg&name=small)
+\
+
+## Business Goal
+__INCREASE ANNUAL MEMBERSHIP SUBSCRIPTIONS__, as its proven most profitable by our finance analysts. Let's go through the data analysis process: **A**sk, **P**repare, **P**rocess, **A**nalyse, **S**hare, **A**ct.  
+\  
+\ 
+
+## 2. Ask
+* bike-sharing has been around Chicago for 10 years since 2012
+* Lyft and Divvy have been operating for over 3 years since 2019
+* verdict from our Director of Marketing, on our upcoming strategy:
+  + __convert casual riders to Annual Members__
+  + our brand, and bike-sharing, has been well-known by Chicago citizens
+  + looking for new rider to join is not efficient
+  + after 10 years of bike-sharing running, if people don't ride, maybe they just do not
+
+### Project task from Director of Marketing
+1. How do annual __members__ and __casual__ riders use our bikes differently?
+2. Why would __casual__ riders buy Cyclistic annual memberships?
+3. How can Cyclistic use digital media to influence __casual__ riders to become __members__?
+* Stakeholders for this project:
+  + __Director of Marketing__, Lily Moreno
+  + __Cyclistic Marketing Analystics team__, which I joined 6 months ago
+  + __Cyclistic Executive team__: approval personel of our marketing campaign
+\
+\
+
+## 3. Prepare
+* [Divvy Public Data](https://ride.divvybikes.com/system-data) is in `.csv` format
+* we can use `SQL` in _BigQuery_, or `R` in R programming. `Spreadsheets` will be too slow to handle
+* programming environment chosen: `R` in R Studio  
+\
+
+#### Install and load required packages:  
+```{r warning=FALSE, message=FALSE}
+# install.packages("janitor") #data cleaning
+# install.packages("tidyverse")
+library(tidyverse)  #wrangle data
+library(lubridate)  #wrangle date attributes
+library(skimr)      #stats
+library(janitor)    #data cleaning
+library(scales) #visuals
+# getwd() #displays working directory
+```
+\
+  
+#### Collect latest Data of last 12 months, 03/2022 - 02/2022
+```{r message=FALSE}
+c1 <- read_csv("202103-divvy-tripdata.csv", show_col_types = FALSE)
+c2 <- read_csv("202104-divvy-tripdata.csv", show_col_types = FALSE)
+c3 <- read_csv("202105-divvy-tripdata.csv", show_col_types = FALSE)
+c4 <- read_csv("202106-divvy-tripdata.csv", show_col_types = FALSE)
+c5 <- read_csv("202107-divvy-tripdata.csv", show_col_types = FALSE)
+c6 <- read_csv("202108-divvy-tripdata.csv", show_col_types = FALSE)
+c7 <- read_csv("202109-divvy-tripdata.csv", show_col_types = FALSE)
+c8 <- read_csv("202110-divvy-tripdata.csv", show_col_types = FALSE)
+c9 <- read_csv("202111-divvy-tripdata.csv", show_col_types = FALSE)
+c10 <- read_csv("202112-divvy-tripdata.csv", show_col_types = FALSE)
+c11 <- read_csv("202201-divvy-tripdata.csv", show_col_types = FALSE)
+c12 <- read_csv("202202-divvy-tripdata.csv", show_col_types = FALSE)
+
+```
+\
+
+#### Check for column inconsistency for different months
+```{r}
+compare_df_cols(c1, c12) 
+
+#check all 12 months of data for consistency with the columns
+compare_df_cols_same(c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12)
+```
+\
+
+#### Combine 12 months of data, into 1 big dataset:
+```{r}
+all_trips <- bind_rows(c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12)
+
+#inspect the new dataset
+skim_without_charts(all_trips)
+```
+\
+\
+
+* Total unique ride_id = total number of rows, means no duplicates
+* 3 unique rideable-types, 2 member-types, good data
+* station name & id total is different, look LATER1
+* station end name & id total is different, look LATER2  
+\
+
+#### Add a "ride_length" calculation to all_trips (in __seconds__)
+```{r}
+# https://stat.ethz.ch/R-manual/R-devel/library/base/html/difftime.html
+all_trips$ride_length <- difftime(all_trips$ended_at,all_trips$started_at)
+
+# inspect
+summary(all_trips)
+```
+\
+
+#### ride_length is in "difftime" class. Convert to "numeric" for calculations
+```{r}
+all_trips$ride_length <- as.numeric(as.character(all_trips$ride_length))
+is.numeric(all_trips$ride_length) #check again
+```
+\
+
+#### Now look into the dataset:
+```{r}
+count(all_trips, rideable_type)
+count(all_trips, member_casual)
+summary(all_trips)
+# total NA is 4617, look LATER3
+# "ride_length" is numeric now 
+```
+\
+
+#### "ride_length" has negatives. Let's troubleshoot what's wrong:
+```{r}
+temp1 <- filter(all_trips, ride_length < 0)
+count(temp1, start_station_name, sort=TRUE)
+count(temp1, end_station_name, sort=TRUE)
+```
+\
+__Note:__ consult team about reason of negative ride time at _Halsted St & Dickens Ave_ station. Let's assume these are bad data first (maybe bikes in repair), and will remove them in the next stage.
+\
+![](https://images.ctfassets.net/p6ae3zqfb1e3/51nFCVC6fi2kzDHk6RaJVS/c81c50f43a9cc23220e615d04198636a/210216-LWS-single-outside-sm.png)
+\
+\
+  
+## 4. Data Cleaning  
+
+* remove bad data
+* assumption 1: negative ride_length rides are invalid: because of repairs/lost/relocation/testing
+* assumption 2: rides with ride_length below 10 seconds are invalid:assume rider swapping bikes after testing the bike, or staff testing
+* NAs in station_names but with ending longitude/latitude are classified as valid rides
+\
+
+#### Take a look at the NA  stations:
+```{r results='hide'}
+filter(all_trips, is.na(end_station_id)) #~762k results
+filter(all_trips, is.na(end_station_name)) #~762k results
+filter(all_trips, is.na(start_station_name)) #~713k results
+filter(all_trips, is.na(start_station_id)) #~713k results
+filter(all_trips, is.na(start_lat)) #zero
+filter(all_trips, is.na(start_lng)) #zero
+filter(all_trips, is.na(end_lat)) # ~4600 results
+filter(all_trips, is.na(end_lng))# ~4600 results
+
+# as we do not know why NA exists, we analyse the ride_length where end_lat is missing
+temp2 <- 
+  filter(all_trips, is.na(end_station_id) & is.na(end_lat))
+skim_without_charts(temp2)
+```
+\
+
+* mean for ride_length for "NA" rides, is 71728 seconds.
+* We assume that those were bikes returned in abnormal way, thus invalid data
+* clean dataset by removing negative ride_length, and remove rides with NA end_lat & lng
+\
+\
+
+#### Remove negative ride_length, and rides lasted less than 10 seconds
+```{r}
+all_trips_v2 <- all_trips[!(all_trips$ride_length<10),]
+
+#remove NAs in end_station_id or end_station_name or started_at or ended_at
+all_trips_v3 <-
+  all_trips_v2[!(is.na(all_trips_v2$end_station_id) | is.na(all_trips_v2$start_station_id) | is.na(all_trips_v2$end_lat) | is.na(all_trips_v2$end_lng)),]
+```
+\
+
+_Note:_ As bikes unlocked for more than 24 hours are regarded as stolen/lost, although they may be real rides, we want to exclude those for analysis purpose:
+```{r}
+all_trips_v3 <-
+  all_trips_v3[!(all_trips_v3$ride_length>=86400),]
+```
+\
+
+#### Check how many rows / percentage of bad data we removed:
+```{r}
+nrow(all_trips)-nrow(all_trips_v3)    
+(nrow(all_trips)-nrow(all_trips_v3))/nrow(all_trips_v3)*100
+```
+\
+\
+
+###########################
+## 5: Analyse the data
+###########################
+\
+
+#### Add columns that list the date, month, day, and year of each ride  
+
+This will allow us to aggregate ride data for each month, day, or year ... before completing these operations we could only aggregate at the ride level
+
+```{r}
+# https://www.statmethods.net/input/dates.html more on date formats in R found at that link
+all_trips_v3$date <- as.Date(all_trips_v3$started_at) #The default format is yyyy-mm-dd
+all_trips_v3$month <- format(as.Date(all_trips_v3$date), "%m")
+all_trips_v3$day <- format(as.Date(all_trips_v3$date), "%d")
+all_trips_v3$year <- format(as.Date(all_trips_v3$date), "%Y")
+all_trips_v3$day_of_week <- format(as.Date(all_trips_v3$date), "%A")
+```
+\
+
+#### Compare members and casual users
+```{r}
+aggregate(all_trips_v3$ride_length ~ all_trips_v3$member_casual, FUN = mean)
+aggregate(all_trips_v3$ride_length ~ all_trips_v3$member_casual, FUN = median)
+aggregate(all_trips_v3$ride_length ~ all_trips_v3$member_casual, FUN = max)
+aggregate(all_trips_v3$ride_length ~ all_trips_v3$member_casual, FUN = min)
+```
+\
+
+#### See the average ride time by each day for members vs casual users
+```{r}
+aggregate(all_trips_v3$ride_length ~ all_trips_v3$member_casual + all_trips_v3$day_of_week, FUN = mean)
+
+# Notice that the days of the week are out of order. Let's fix that.
+all_trips_v3$day_of_week <- ordered(all_trips_v3$day_of_week, levels=c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+```
+\
+
+#### Analyze ridership data by type and weekday
+```{r}
+all_trips_v3 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>%  #creates weekday field using wday()
+  group_by(member_casual, weekday) %>%  #groups by usertype and weekday
+  summarise(number_of_rides = n()							#calculates the number of rides and average duration 
+            ,average_duration = mean(ride_length)) %>% 		# calculates the average duration
+  arrange(member_casual, weekday)								# sorts
+```
+\
+\
+
+## 6: Visualisation
+\
+
+#### Visualise the number of rides by rider type
+```{r message=FALSE}
+temp1 <- all_trips_v3 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n()) %>% 
+  arrange(member_casual, weekday)  %>% 
+  ggplot(aes(x = weekday, y = number_of_rides, fill = member_casual)) +
+  geom_col(position = "dodge")
+
+temp1 + scale_y_continuous(labels = comma, name="Number of rides") +labs(title = "Casual trips grow considerably in the Weekends")
+```
+\
+\
+
+#### Create a visualization for average duration
+```{r message=FALSE}
+temp2 <- all_trips_v3 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n()
+            ,average_duration_secs = mean(ride_length)) %>% 
+  arrange(member_casual, weekday)  %>% 
+  ggplot(aes(x = weekday, y = average_duration_secs, fill = member_casual)) +
+  geom_col(position = "dodge")
+
+temp2 + scale_y_continuous(breaks=c(900, 1800), name = "Average ride duration in Seconds") +labs(title ="Members rides: 15mins, Casual rides: 30mins on average")
+```
+\
+
+Insight: trip duration on average:
+* member trips: 10-15mins
+* casual trips: 23-33mins  
+\
+\
+
+
+## 7: Export summary file for further analysis
+
+#### Create `csv` files that we will visualize in Excel, Tableau, or any presentation software
+```{r }
+temp5 <- count(all_trips_v3, day_of_week, rideable_type, member_casual)
+
+temp3 <- aggregate(all_trips_v3$ride_length ~ all_trips_v3$member_casual + all_trips_v3$day_of_week, FUN = mean)
+
+write.csv(temp5, file = 'temp5.csv') #replace with your own location
+write.csv(temp3, file = 'temp3.csv') #replace with your own location
+
+#temp4 <- all_trips_v3
+#write.csv(temp4, file = 'all_trips3.csv')
+```
+\
+
+
+#### Import custom `.csv` generated to Tableau, for insights.
+
+[![My Tableau page](https://raw.githubusercontent.com/lingling747/capstone_project/main/figures/Dashboard%201.png "My Tableau Page")](https://public.tableau.com/views/Cyclistic_total_rides_summary_2022/Dashboard1?:language=en-US&:display_count=n&:origin=viz_share_link)
+
+
+\
+
+* _Tableau_ dashboards are flexible and easy to use  
+* Members ride the least on Sundays
+* Casual riders mostly ride on weekends  
+\
+\
+
+## 8. Act  
+* causal riders mostly ride on weekends
+* members ride the least on weekends
+
+#### Marketing Strategy
+* __physically promote membership sign-ups right at our 600+ bike docks__
+* __only promote on weekends to attract the most casual riders__
+* __cost effective strategy__
+
+![](https://images.ctfassets.net/p6ae3zqfb1e3/3sHutsUqJQkzDsJfTCjPT2/30ad3f5a33d1e611aff425669b7cf0f3/Divvy-Fee-Ridership-Area-2021-04-28_V2-02.png)
