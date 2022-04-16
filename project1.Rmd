@@ -1,5 +1,5 @@
 ---
-title: "Google Data Analytics Project"
+title: "Google Data Analytics Professional Certificate - Project"
 author: "Leo Leung"
 date: 'March 2022'
 output: html_document
@@ -9,17 +9,13 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-* [Introduction]
-
-
-
-## 1. Introduction: Google Data Analytics - Case Study
+## 1. Introduction: Case Study: 12 months of public data, Mar21-Feb22
 * My title:
   + **Junior Data Analyst**, _Marketing team_
 * Company:
   + __Cyclistic__ (fictional), bike-sharing company in Chicago
   + mocking a real-world bike-sharing system in Chicago, [Divvy](https://divvybikes.com/pricing), operated by [Lyft](https://www.lyft.com/bikes/chicago-il/meet-our-bikes)
-  + data source: [Divvy Public Data](https://ride.divvybikes.com/system-data)
+  + __Data source:__ [Divvy Public Data](https://ride.divvybikes.com/system-data)
 * What we do:
   + __push-bike__ (main) __& e-bike__ (growing) __sharing / rentals__
   + __6000 bikes__ across __600 docking stations__ in Chicago
